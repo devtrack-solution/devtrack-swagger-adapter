@@ -1,0 +1,18 @@
+{
+  "id": "ext/swagger-adapter",
+  "foundationApiMajor": 1,
+  "exportName": "SwaggerAdapterModule",
+  "provides": [
+    {
+      "id": "api-documentation",
+      "major": 1
+    }
+  ],
+  "requires": [],
+  "composition": {
+    "hostOptions": {
+      "token": "swagger.options",
+      "type": "SwaggerAdapterOptions"
+    }
+  }
+}

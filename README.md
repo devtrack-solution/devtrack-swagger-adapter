@@ -1,98 +1,61 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# @devtrack/swagger-adapter
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Módulo oficial Swagger Adapter da DevTrack Foundation. Gera a documentação OpenAPI a partir do contrato neutro `defineDtoSchema`, exportado por `@devtrack/foundation-api/contracts`, sobre `@nestjs/swagger@11.4.8` (versão exata). Os módulos de negócio descrevem seus DTOs só com o contrato neutro e nunca importam `@nestjs/swagger`.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- Expõe a UI em `${path}` (padrão `/docs`) e o documento em `${path}-json`, somente quando o módulo está instalado e selecionado.
+- Título, versão e caminho vêm do host. A configuração é validada: título e versão não vazios, com até 200 caracteres; caminho no formato `/segmento/segmento`.
+- Fornece a capacidade `api-documentation` major 1. Só Express é suportado (`platform-express`).
 
-## Description
+É uma extensão npm: entra na API pelo `api-cli`, nunca por cópia de arquivos.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Instalação
 
-## Project setup
+Pré-requisito: um host com `@devtrack/foundation-api` `^0.1.0`, `@nestjs/common` e `@nestjs/core` `^11`. Com o registry configurado no `.npmrc` (`@devtrack:registry=…`, ver `foundation-api/docs/publishing.md`):
 
 ```bash
-$ npm install
+# api-cli do workspace (bin `api-cli` de ../api-cli); --foundation aponta para o host
+api-cli --foundation ./foundation-api install @devtrack/swagger-adapter@0.1.0 --registry "$DEVTRACK_REGISTRY"
 ```
 
-## Compile and run the project
+O `api-cli` valida integridade, versão exata, peers e descriptor, registra `ext/swagger-adapter` no perfil e regenera a composição.
 
-```bash
-# development
-$ npm run start
+## Configuração
 
-# watch mode
-$ npm run start:dev
+O host fornece as opções pelo token de host `swagger.options`, declarado no bloco `composition` do descriptor. O módulo gerado expõe esse token como `COMPOSITION_HOST_TOKENS.swaggerOptions`, com valor `Symbol.for('foundation.api.v1.host.swagger.options')`:
 
-# production mode
-$ npm run start:prod
+```ts
+import type { SwaggerAdapterOptions } from '@devtrack/swagger-adapter';
+import { COMPOSITION_HOST_TOKENS } from './composition/composition.generated';
+
+const swaggerOptions: SwaggerAdapterOptions = { title: 'Minha API', version: '1.0.0' };
+// num módulo @Global() do host:
+// { provide: COMPOSITION_HOST_TOKENS.swaggerOptions, useValue: swaggerOptions }
 ```
 
-## Run tests
+Sem o token, o boot falha. Uso direto, sem o gerador: `SwaggerAdapterModule.register(options)` ou `registerAsync({ inject, useFactory })`.
 
-```bash
-# unit tests
-$ npm run test
+## Descriptor
 
-# e2e tests
-$ npm run test:e2e
+`@devtrack/swagger-adapter/descriptor` (`dist/swagger-adapter.descriptor.json`) contém só metadata:
 
-# test coverage
-$ npm run test:cov
+```json
+{
+  "id": "ext/swagger-adapter",
+  "provides": [{ "id": "api-documentation", "major": 1 }],
+  "composition": {
+    "hostOptions": { "token": "swagger.options", "type": "SwaggerAdapterOptions" }
+  }
+}
 ```
 
-## Deployment
+## Desenvolvimento
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- No workspace, `scripts/link-foundation.mjs` liga `node_modules/@devtrack/foundation-api` à pasta irmã `../foundation-api`. Fora do workspace, a Foundation vem do registry.
+- `npm run typecheck`, `npm run lint:check`, `npm test` (unitários e e2e com `/docs`, `/docs-json` e o DTO neutro), `npm run test:boundaries`.
+- Fronteira: o código só importa `@devtrack/foundation-api/contracts` e `/nest`. O `prepack` roda a verificação de publicação e a de fronteira.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Limites
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- O instalador depende de internals do Nest (objeto mínimo com `container`, `config`, `getHttpAdapter()` e `useStaticAssets`), cobertos pelo e2e e pinados pela versão.
+- `describeOperation` (resumo e tags de operação) não existe ainda.
+- A licença continua `UNLICENSED` até a decisão de publicação pública.

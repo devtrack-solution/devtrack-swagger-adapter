@@ -1,55 +1,67 @@
 {
-  "name": "swagger-adapter",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
-  "private": true,
+  "name": "@devtrack/swagger-adapter",
+  "version": "0.1.0",
+  "description": "Módulo oficial Swagger Adapter da DevTrack Foundation: documentação OpenAPI a partir do contrato neutro defineDtoSchema.",
   "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./descriptor": "./dist/swagger-adapter.descriptor.json"
+  },
+  "files": [
+    "dist",
+    "conformance"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "prebuild": "node scripts/link-foundation.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "pretypecheck": "node scripts/link-foundation.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint:check": "eslint \"{src,test}/**/*.ts\" --max-warnings=0",
+    "pretest": "node scripts/link-foundation.mjs",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:boundaries": "node scripts/check-boundaries.mjs && node --test scripts/check-boundaries.test.mjs",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:publishable": "node node_modules/@devtrack/foundation-api/scripts/check-publishable.mjs",
+    "prepack": "node node_modules/@devtrack/foundation-api/scripts/check-publishable.mjs && node scripts/check-boundaries.mjs",
+    "prepublishOnly": "node node_modules/@devtrack/foundation-api/scripts/check-publishable.mjs --require-published-peers"
   },
   "dependencies": {
-    "@nestjs/common": "^11.0.1",
-    "@nestjs/core": "^11.0.1",
-    "@nestjs/platform-express": "^11.0.1",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "@nestjs/swagger": "11.4.8"
+  },
+  "peerDependencies": {
+    "@devtrack/foundation-api": "^0.1.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.18.0",
-    "@nestjs/cli": "^11.0.0",
-    "@nestjs/schematics": "^11.0.0",
-    "@nestjs/testing": "^11.0.1",
-    "@types/express": "^5.0.0",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^22.10.7",
-    "@types/supertest": "^6.0.2",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-prettier": "^5.2.2",
-    "globals": "^16.0.0",
-    "jest": "^30.0.0",
-    "prettier": "^3.4.2",
-    "source-map-support": "^0.5.21",
-    "supertest": "^7.0.0",
-    "ts-jest": "^29.2.5",
-    "ts-loader": "^9.5.2",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "@eslint/js": "9.39.5",
+    "@nestjs/common": "11.2.8",
+    "@nestjs/core": "11.2.8",
+    "@nestjs/platform-express": "11.2.8",
+    "@nestjs/testing": "11.2.8",
+    "@types/jest": "30.0.0",
+    "@types/node": "22.20.5",
+    "@types/supertest": "6.0.3",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.7",
+    "globals": "16.5.0",
+    "jest": "30.5.2",
+    "prettier": "3.9.10",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "supertest": "7.3.2",
+    "ts-jest": "29.4.15",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -57,15 +69,31 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
+    "rootDir": ".",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/test"
     ],
-    "coverageDirectory": "../coverage",
+    "testRegex": ".*\\.(spec|e2e-spec)\\.ts$",
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "setupFiles": [
+      "reflect-metadata"
+    ],
+    "moduleNameMapper": {
+      "^@nestjs/(common|core|testing|platform-express)$": "<rootDir>/node_modules/@nestjs/$1",
+      "^@nestjs/(common|core|testing|platform-express)/(.*)$": "<rootDir>/node_modules/@nestjs/$1/$2"
+    },
     "testEnvironment": "node"
+  },
+  "conformance": {
+    "layout": "module",
+    "boot": [
+      "node",
+      "conformance/boot.js"
+    ],
+    "consumer": "conformance/consumer.ts",
+    "implementer": "conformance/implementer.ts"
   }
 }
