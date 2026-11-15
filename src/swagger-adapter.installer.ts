@@ -14,7 +14,7 @@ import {
 import {
   listDtoSchemas,
   type DtoType,
-} from '@devtrack/foundation-api/contracts';
+} from '@devtrack-solution/foundation-api/contracts';
 import type { ResolvedSwaggerAdapterOptions } from './swagger-adapter.options';
 import { SWAGGER_ADAPTER_OPTIONS } from './swagger-adapter.tokens';
 

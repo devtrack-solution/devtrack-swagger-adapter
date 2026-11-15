@@ -5,7 +5,7 @@ require('reflect-metadata');
 const http = require('node:http');
 const { Module } = require('@nestjs/common');
 const { NestFactory } = require('@nestjs/core');
-const { SwaggerAdapterModule } = require('@devtrack/swagger-adapter');
+const { SwaggerAdapterModule } = require('@devtrack-solution/swagger-adapter');
 
 function get(port, path) {
   return new Promise((resolve, reject) => {

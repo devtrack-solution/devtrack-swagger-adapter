@@ -1,4 +1,4 @@
-import type { ModuleDescriptor } from '@devtrack/foundation-api/contracts';
+import type { ModuleDescriptor } from '@devtrack-solution/foundation-api/contracts';
 import descriptorFile from './swagger-adapter.descriptor.json';
 
 /**
@@ -13,7 +13,7 @@ export const swaggerAdapterModuleDescriptor: ModuleDescriptor = {
   foundationApiMajor: 1,
   origin: {
     kind: 'npm',
-    packageName: '@devtrack/swagger-adapter',
+    packageName: '@devtrack-solution/swagger-adapter',
     version: '0.1.0',
     integrity: 'sha512-PENDING-PUBLISH',
   },

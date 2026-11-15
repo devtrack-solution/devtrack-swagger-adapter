@@ -5,7 +5,7 @@ import {
   SwaggerAdapterModule,
   swaggerAdapterModuleDescriptor,
   type SwaggerAdapterOptions,
-} from '@devtrack/swagger-adapter';
+} from '@devtrack-solution/swagger-adapter';
 
 const options: SwaggerAdapterOptions = { title: 'Conformance API', version: '1.0.0' };
 

@@ -1,7 +1,7 @@
 // Fixture fictícia de extensão de negócio. Usa só o contrato neutro da Foundation:
 // não importa @nestjs/swagger nem qualquer biblioteca de documentação.
 import { Body, Controller, Post } from '@nestjs/common';
-import { defineDtoSchema } from '@devtrack/foundation-api/contracts';
+import { defineDtoSchema } from '@devtrack-solution/foundation-api/contracts';
 
 export class CreateFixtureContactDto {
   name!: string;

@@ -1,11 +1,11 @@
-# Pipeline do devtrack-swagger-adapter (@devtrack/swagger-adapter), change split-foundation-repositories, D5.
+# Pipeline do devtrack-swagger-adapter (@devtrack-solution/swagger-adapter), change split-foundation-repositories, D5.
 #
 # Gates: qualidade do pacote e conformidade contra a Foundation publicada. Resultado failed (1)
 # ou incomplete (2) da conformidade bloqueia a publicação.
 # Publicação: só em tag v<versão> igual ao package.json, depois de todos os gates verdes.
 #
 # Variáveis do pipeline (definidas na UI do Azure DevOps, não no repositório):
-#   DEVTRACK_REGISTRY        URL do registry do escopo @devtrack (D6); fonte da Foundation e do api-cli
+#   DEVTRACK_REGISTRY        URL do registry do escopo @devtrack-solution (D6); fonte da Foundation e do api-cli
 #   DEVTRACK_REGISTRY_TOKEN  secreta, token de publicação (só o job de publicação recebe)
 #
 # A conformidade roda a partir do checkout do devtrack-foundation-core na tag da versão publicada
@@ -114,4 +114,4 @@ stages:
             displayName: Instalar e compilar
           # prepublishOnly recusa publicar sem o peer publicado no registry.
           - script: npm publish
-            displayName: Publicar @devtrack/swagger-adapter no DEVTRACK_REGISTRY
+            displayName: Publicar @devtrack-solution/swagger-adapter no DEVTRACK_REGISTRY

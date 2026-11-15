@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Gate de fronteira de módulo oficial: o código só alcança a Foundation pelas fachadas
-// públicas `@devtrack/foundation-api/contracts` e `/nest` (spec foundation-distribution).
+// públicas `@devtrack-solution/foundation-api/contracts` e `/nest` (spec foundation-distribution).
 // Uso: node scripts/check-boundaries.mjs [--root <diretório do pacote>]
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const FOUNDATION_PACKAGE = '@devtrack/foundation-api';
+const FOUNDATION_PACKAGE = '@devtrack-solution/foundation-api';
 const LEGACY_FOUNDATION_PACKAGE = 'foundation-api';
 const PUBLIC_ENTRYPOINTS = new Set([`${FOUNDATION_PACKAGE}/contracts`, `${FOUNDATION_PACKAGE}/nest`]);
 const IMPORT_PATTERNS = [

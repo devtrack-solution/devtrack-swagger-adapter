@@ -1,5 +1,5 @@
 {
-  "name": "@devtrack/swagger-adapter",
+  "name": "@devtrack-solution/swagger-adapter",
   "version": "0.1.0",
   "description": "Módulo oficial Swagger Adapter da DevTrack Foundation: documentação OpenAPI a partir do contrato neutro defineDtoSchema.",
   "license": "MIT",
@@ -29,15 +29,15 @@
     "test": "jest",
     "test:boundaries": "node scripts/check-boundaries.mjs && node --test scripts/check-boundaries.test.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "check:publishable": "node node_modules/@devtrack/foundation-api/scripts/check-publishable.mjs",
-    "prepack": "node node_modules/@devtrack/foundation-api/scripts/check-publishable.mjs && node scripts/check-boundaries.mjs",
-    "prepublishOnly": "node node_modules/@devtrack/foundation-api/scripts/check-publishable.mjs --require-published-peers"
+    "check:publishable": "node node_modules/@devtrack-solution/foundation-api/scripts/check-publishable.mjs",
+    "prepack": "node node_modules/@devtrack-solution/foundation-api/scripts/check-publishable.mjs && node scripts/check-boundaries.mjs",
+    "prepublishOnly": "node node_modules/@devtrack-solution/foundation-api/scripts/check-publishable.mjs --require-published-peers"
   },
   "dependencies": {
     "@nestjs/swagger": "11.4.8"
   },
   "peerDependencies": {
-    "@devtrack/foundation-api": "^0.1.0",
+    "@devtrack-solution/foundation-api": "^0.1.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0"
   },

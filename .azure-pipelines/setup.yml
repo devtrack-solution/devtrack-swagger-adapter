@@ -1,4 +1,4 @@
-# Passos comuns dos jobs: Node fixo e, quando pedido, o npmrc do escopo @devtrack (D6).
+# Passos comuns dos jobs: Node fixo e, quando pedido, o npmrc do escopo @devtrack-solution (D6).
 #
 # O registry vem da variável DEVTRACK_REGISTRY do pipeline. O npmrc fica no diretório temporário
 # do agente e é exportado como NPM_CONFIG_USERCONFIG para os passos seguintes do job. Nenhum
@@ -30,11 +30,11 @@ steps:
           fi
           registry="${DEVTRACK_REGISTRY%/}"
           npmrc="$AGENT_TEMPDIRECTORY/devtrack.npmrc"
-          printf '@devtrack:registry=%s/\n' "$registry" > "$npmrc"
+          printf '@devtrack-solution:registry=%s/\n' "$registry" > "$npmrc"
           chmod 600 "$npmrc"
           echo "##vso[task.setvariable variable=NPM_CONFIG_USERCONFIG]$npmrc"
-          echo "@devtrack -> $registry/"
-        displayName: npmrc do escopo @devtrack
+          echo "@devtrack-solution -> $registry/"
+        displayName: npmrc do escopo @devtrack-solution
 
   - ${{ if eq(parameters.auth, true) }}:
       - bash: |

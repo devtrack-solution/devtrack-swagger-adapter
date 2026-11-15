@@ -17,12 +17,12 @@ function violationsFor(source) {
 }
 
 const rejected = [
-  ['caminho interno da Foundation', "import { x } from '@devtrack/foundation-api/dist/core/x';"],
-  ['raiz da Foundation', "import { x } from '@devtrack/foundation-api';"],
-  ['subpath nativo da Foundation', "import { x } from '@devtrack/foundation-api/native/persistence-typeorm';"],
+  ['caminho interno da Foundation', "import { x } from '@devtrack-solution/foundation-api/dist/core/x';"],
+  ['raiz da Foundation', "import { x } from '@devtrack-solution/foundation-api';"],
+  ['subpath nativo da Foundation', "import { x } from '@devtrack-solution/foundation-api/native/persistence-typeorm';"],
   ['nome antigo sem escopo', "import { x } from 'foundation-api/contracts';"],
   ['relativo que sai de src', "import { x } from '../../../foundation-api/src/core/x';"],
-  ['require de interno', "const x = require('@devtrack/foundation-api/dist/x');"],
+  ['require de interno', "const x = require('@devtrack-solution/foundation-api/dist/x');"],
 ];
 for (const [label, source] of rejected) {
   test(`reprova ${label}`, () => {
@@ -31,8 +31,8 @@ for (const [label, source] of rejected) {
 }
 
 const accepted = [
-  ['contracts', "import type { Clock } from '@devtrack/foundation-api/contracts';"],
-  ['nest', "import { FoundationCoreModule } from '@devtrack/foundation-api/nest';"],
+  ['contracts', "import type { Clock } from '@devtrack-solution/foundation-api/contracts';"],
+  ['nest', "import { FoundationCoreModule } from '@devtrack-solution/foundation-api/nest';"],
   ['relativo dentro de src', "import { y } from '../index';"],
   ['dependência própria', "import { DocumentBuilder } from '@nestjs/swagger';"],
 ];
