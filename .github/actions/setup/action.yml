@@ -1,0 +1,62 @@
+# Passos comuns dos jobs (change split-foundation-repositories, D5): Node fixo, cache do npm e,
+# quando pedido, o npmrc do escopo @devtrack-solution (D6).
+#
+# O registry vem da variável DEVTRACK_REGISTRY do workflow. O npmrc fica em $RUNNER_TEMP e é
+# exportado como NPM_CONFIG_USERCONFIG para os passos seguintes do job. Nenhum .npmrc do
+# repositório aponta para registry.
+#
+# O token só entra com `auth: 'true'`, que é o caso do job de publicação. Ele chega pela variável
+# NPM_TOKEN do passo que usa esta action (`env: NPM_TOKEN: ${{ secrets.NPM_TOKEN }}`). Os gates
+# leem o registry sem credencial, porque executam código de dependências e do módulo qualificado.
+name: Setup DevTrack
+description: Node fixo e npmrc do escopo @devtrack-solution
+inputs:
+  node-version:
+    description: Versão do Node
+    default: '24.21.0'
+  working-directory:
+    description: Pasta do package-lock.json usado pelo cache do npm
+    default: '.'
+  registry:
+    description: Gravar o npmrc do escopo @devtrack-solution
+    default: 'true'
+  auth:
+    description: Acrescentar o token de publicação (NPM_TOKEN) ao npmrc
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: npmrc do escopo @devtrack-solution
+      if: inputs.registry == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${DEVTRACK_REGISTRY:-}" ]; then
+          echo "::error::Variável DEVTRACK_REGISTRY não definida no workflow"
+          exit 1
+        fi
+        registry="${DEVTRACK_REGISTRY%/}"
+        npmrc="$RUNNER_TEMP/devtrack.npmrc"
+        printf '@devtrack-solution:registry=%s/\n' "$registry" > "$npmrc"
+        chmod 600 "$npmrc"
+        echo "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
+        echo "@devtrack-solution -> $registry/"
+
+    - name: Token de publicação do registry
+      if: inputs.auth == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${NPM_TOKEN:-}" ]; then
+          echo "::error::Secret NPM_TOKEN não definido no repositório"
+          exit 1
+        fi
+        registry="${DEVTRACK_REGISTRY%/}"
+        printf '//%s/:_authToken=%s\n' "${registry#*://}" "$NPM_TOKEN" >> "$NPM_CONFIG_USERCONFIG"
+        echo "token de publicação configurado"

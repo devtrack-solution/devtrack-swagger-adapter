@@ -1,0 +1,146 @@
+# CI do devtrack-swagger-adapter (@devtrack-solution/swagger-adapter), change split-foundation-repositories, D5.
+#
+# Gates: qualidade do pacote e conformidade contra a Foundation publicada. Resultado failed (1)
+# ou incomplete (2) da conformidade bloqueia a publicação. O job `ci-required` agrega os gates;
+# marque-o como check obrigatório da `main`.
+# Publicação: só em tag v<versão> igual ao package.json, depois de `ci-required` verde.
+#
+# Configuração do repositório (Settings → Secrets and variables → Actions):
+#   vars.DEVTRACK_REGISTRY         opcional; URL do registry do escopo (D6). Padrão: npmjs.
+#   secrets.NPM_TOKEN              token de publicação no npmjs; só o job de publicação recebe.
+#   secrets.FOUNDATION_CORE_TOKEN  só se o devtrack-foundation-core for privado: token com
+#                                  leitura de conteúdo daquele repositório, para o checkout.
+#
+# A conformidade roda a partir do checkout do devtrack-foundation-core na tag da versão
+# publicada do peer (kit, host de instalação e build seletivo). Ao subir a faixa do peer para
+# outra versão da Foundation, atualize FOUNDATION_REF; o passo recusa checkout em versão
+# diferente da publicada.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  DEVTRACK_REGISTRY: ${{ vars.DEVTRACK_REGISTRY || 'https://registry.npmjs.org' }}
+  API_CLI_VERSION: '0.1.0'
+  FOUNDATION_REPOSITORY: devtrack-solution/devtrack-foundation-core
+  FOUNDATION_REF: v0.1.0
+
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Instalar dependências (Foundation do registry, lock obrigatório)
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint:check
+      - name: Testes
+        run: npm test -- --ci
+      - name: Fronteiras (só fachadas públicas da Foundation)
+        run: npm run test:boundaries
+      - name: Build e pacote publicável
+        run: npm run build && npm run check:publishable
+
+  conformance:
+    name: conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: module
+      # Não pode se chamar foundation-api: o link-foundation.mjs ligaria a pasta irmã ao módulo.
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.FOUNDATION_REPOSITORY }}
+          ref: ${{ env.FOUNDATION_REF }}
+          path: foundation-core
+          token: ${{ secrets.FOUNDATION_CORE_TOKEN || github.token }}
+      - uses: ./module/.github/actions/setup
+        with:
+          working-directory: module
+      - name: Módulo (npm ci e build)
+        working-directory: module
+        run: npm ci && npm run build
+      - name: Foundation na tag do peer (npm ci)
+        working-directory: foundation-core
+        run: npm ci
+      - name: Kit de conformidade, perfil padrão (0 passed; 1 failed e 2 incomplete bloqueiam)
+        working-directory: foundation-core
+        run: >-
+          npm run -s conformance:published --
+          --module "$GITHUB_WORKSPACE/module"
+          --registry "$DEVTRACK_REGISTRY"
+          --api-cli-version "$API_CLI_VERSION"
+          --out "$RUNNER_TEMP/conformance"
+      - name: Publicar relatório de conformidade
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: conformance-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/conformance/
+          if-no-files-found: warn
+
+  ci-required:
+    name: ci-required
+    if: always()
+    needs: [quality, conformance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Todos os gates verdes
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "resultados: $RESULTS"
+          for r in $RESULTS; do [ "$r" = success ] || { echo "::error::gate com resultado $r"; exit 1; }; done
+
+  publish:
+    name: npm publish
+    needs: [ci-required]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with: { auth: 'true' }
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Tag igual à versão
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME não corresponde ao package.json (v$version)"
+            exit 1
+          fi
+      - name: Instalar e compilar
+        run: npm ci && npm run build
+      # prepublishOnly recusa publicar sem o peer publicado no registry.
+      - name: Publicar @devtrack-solution/swagger-adapter
+        env:
+          # Provenance exige repositório público; em repositório privado publica sem ela.
+          PROVENANCE: ${{ github.event.repository.private && '--no-provenance' || '--provenance' }}
+        run: npm publish "$PROVENANCE"
