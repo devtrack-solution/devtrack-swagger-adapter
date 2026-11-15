@@ -2,7 +2,7 @@
   "name": "@devtrack/swagger-adapter",
   "version": "0.1.0",
   "description": "Módulo oficial Swagger Adapter da DevTrack Foundation: documentação OpenAPI a partir do contrato neutro defineDtoSchema.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

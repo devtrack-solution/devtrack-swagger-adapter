@@ -1,0 +1,54 @@
+# Passos comuns dos jobs: Node fixo e, quando pedido, o npmrc do escopo @devtrack (D6).
+#
+# O registry vem da variável DEVTRACK_REGISTRY do pipeline. O npmrc fica no diretório temporário
+# do agente e é exportado como NPM_CONFIG_USERCONFIG para os passos seguintes do job. Nenhum
+# .npmrc do repositório aponta para registry.
+#
+# O token (variável secreta DEVTRACK_REGISTRY_TOKEN) só entra nos jobs com `auth: true`, que são
+# os de publicação. Os gates leem o registry sem credencial (no npmjs a leitura é anônima) e não
+# recebem o token, porque executam código de dependências e do módulo qualificado.
+parameters:
+  - name: registry
+    type: boolean
+    default: true
+  - name: auth
+    type: boolean
+    default: false
+
+steps:
+  - task: NodeTool@0
+    displayName: Node $(NODE_VERSION)
+    inputs:
+      versionSpec: $(NODE_VERSION)
+
+  - ${{ if eq(parameters.registry, true) }}:
+      - bash: |
+          set -euo pipefail
+          if [ -z "${DEVTRACK_REGISTRY:-}" ]; then
+            echo "##vso[task.logissue type=error]Variável DEVTRACK_REGISTRY não definida no pipeline"
+            exit 1
+          fi
+          registry="${DEVTRACK_REGISTRY%/}"
+          npmrc="$AGENT_TEMPDIRECTORY/devtrack.npmrc"
+          printf '@devtrack:registry=%s/\n' "$registry" > "$npmrc"
+          chmod 600 "$npmrc"
+          echo "##vso[task.setvariable variable=NPM_CONFIG_USERCONFIG]$npmrc"
+          echo "@devtrack -> $registry/"
+        displayName: npmrc do escopo @devtrack
+
+  - ${{ if eq(parameters.auth, true) }}:
+      - bash: |
+          set -euo pipefail
+          # Variável ausente chega como o texto literal da macro: não é token. O literal vai
+          # partido para o próprio Azure não expandi-lo aqui dentro.
+          unexpanded='$''(DEVTRACK_REGISTRY_TOKEN)'
+          if [ -z "${REGISTRY_TOKEN:-}" ] || [ "$REGISTRY_TOKEN" = "$unexpanded" ]; then
+            echo "##vso[task.logissue type=error]Variável secreta DEVTRACK_REGISTRY_TOKEN não definida no pipeline"
+            exit 1
+          fi
+          registry="${DEVTRACK_REGISTRY%/}"
+          printf '//%s/:_authToken=%s\n' "${registry#*://}" "$REGISTRY_TOKEN" >> "$NPM_CONFIG_USERCONFIG"
+          echo "token de publicação configurado"
+        displayName: Token de publicação do registry
+        env:
+          REGISTRY_TOKEN: $(DEVTRACK_REGISTRY_TOKEN)

@@ -1,0 +1,117 @@
+# Pipeline do devtrack-swagger-adapter (@devtrack/swagger-adapter), change split-foundation-repositories, D5.
+#
+# Gates: qualidade do pacote e conformidade contra a Foundation publicada. Resultado failed (1)
+# ou incomplete (2) da conformidade bloqueia a publicação.
+# Publicação: só em tag v<versão> igual ao package.json, depois de todos os gates verdes.
+#
+# Variáveis do pipeline (definidas na UI do Azure DevOps, não no repositório):
+#   DEVTRACK_REGISTRY        URL do registry do escopo @devtrack (D6); fonte da Foundation e do api-cli
+#   DEVTRACK_REGISTRY_TOKEN  secreta, token de publicação (só o job de publicação recebe)
+#
+# A conformidade roda a partir do checkout do devtrack-foundation-core na tag da versão publicada
+# do peer (kit, host de instalação e build seletivo). Ao subir a faixa do peer para outra versão
+# da Foundation, atualize `ref` abaixo; o passo recusa checkout em versão diferente da publicada.
+#
+# PR: o Azure Repos ignora a chave `pr:`. A validação de PR é a política de branch da main
+# (Build validation apontando para este pipeline).
+
+trigger:
+  branches:
+    include: [main]
+  tags:
+    include: ['v*']
+
+resources:
+  repositories:
+    - repository: foundation
+      type: git
+      name: DevTrackFoundations/devtrack-foundation-core
+      ref: refs/tags/v0.1.0
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  NODE_VERSION: '24.21.0'
+  API_CLI_VERSION: '0.1.0'
+  MODULE_DIR: $(Pipeline.Workspace)/s/module
+  # Não pode se chamar foundation-api: o link-foundation.mjs ligaria a pasta irmã ao módulo.
+  FOUNDATION_DIR: $(Pipeline.Workspace)/s/foundation-core
+
+stages:
+  - stage: gates
+    displayName: Gates
+    jobs:
+      - job: quality
+        displayName: qualidade do pacote
+        timeoutInMinutes: 20
+        steps:
+          - template: .azure-pipelines/setup.yml
+          - script: npm ci
+            displayName: Instalar dependências (Foundation do registry, lock obrigatório)
+          - script: npm run typecheck
+            displayName: Typecheck
+          - script: npm run lint:check
+            displayName: Lint
+          - script: npm test -- --ci
+            displayName: Testes
+          - script: npm run test:boundaries
+            displayName: Fronteiras (só fachadas públicas da Foundation)
+          - script: npm run build && npm run check:publishable
+            displayName: Build e pacote publicável
+
+      - job: conformance
+        displayName: conformidade contra a Foundation publicada
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            path: s/module
+          - checkout: foundation
+            path: s/foundation-core
+          - template: .azure-pipelines/setup.yml
+          - script: npm ci && npm run build
+            displayName: Módulo (npm ci e build)
+            workingDirectory: $(MODULE_DIR)
+          - script: npm ci
+            displayName: Foundation na tag do peer (npm ci)
+            workingDirectory: $(FOUNDATION_DIR)
+          - script: >-
+              npm run -s conformance:published --
+              --module "$(MODULE_DIR)"
+              --registry "$(DEVTRACK_REGISTRY)"
+              --api-cli-version "$(API_CLI_VERSION)"
+              --out "$(Build.ArtifactStagingDirectory)/conformance"
+            displayName: Kit de conformidade, perfil padrão (0 passed; 1 failed e 2 incomplete bloqueiam)
+            workingDirectory: $(FOUNDATION_DIR)
+          - task: PublishPipelineArtifact@1
+            displayName: Publicar relatório de conformidade
+            condition: always()
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/conformance
+              artifact: conformance-$(System.JobAttempt)
+
+  - stage: publish
+    displayName: Publicar
+    dependsOn: gates
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+    jobs:
+      - job: publish
+        displayName: npm publish
+        timeoutInMinutes: 20
+        steps:
+          - template: .azure-pipelines/setup.yml
+            parameters: { auth: true }
+          - bash: |
+              set -euo pipefail
+              version="$(node -p "require('./package.json').version")"
+              tag="${BUILD_SOURCEBRANCH#refs/tags/}"
+              if [ "$tag" != "v$version" ]; then
+                echo "##vso[task.logissue type=error]tag $tag não corresponde ao package.json (v$version)"
+                exit 1
+              fi
+            displayName: Tag igual à versão
+          - script: npm ci && npm run build
+            displayName: Instalar e compilar
+          # prepublishOnly recusa publicar sem o peer publicado no registry.
+          - script: npm publish
+            displayName: Publicar @devtrack/swagger-adapter no DEVTRACK_REGISTRY
